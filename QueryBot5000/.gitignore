@@ -1,0 +1,16 @@
+# Ignore everything
+*
+# But descend into directories
+!*/
+# Recursively allow files under subtree
+!/anonymizer/**
+!/forecaster/**
+!/pre-processor/**
+!/clusterer/**
+!/planner-simulator/**
+!/workload-simulator/**
+
+# For individual files
+!.gitignore
+!run.sh
+!README.md
