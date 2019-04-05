@@ -350,12 +350,12 @@ def train_pass(args, method, model, data, criterion, lr, bptt, clip, log_interva
         loss = criterion(output, targets)
         if args.cuda:
             loss = loss.cpu()
-        total_loss += loss.data.numpy()[0]
-        losses.append(loss.data.numpy()[0])
+        total_loss += loss.data.numpy().item()
+        losses.append(loss.data.numpy().item())
 
         # Perform Gradient Descent
         loss.backward()
-        torch.nn.utils.clip_grad_norm(model.parameters(), clip)
+        torch.nn.utils.clip_grad_norm_(model.parameters(), clip)
         
         for p in model.parameters():
             p.data.add_(-lr, p.grad.data)
@@ -477,7 +477,7 @@ def evaluate_pass(args, method, model, data, criterion, bptt):
             targets = targets.cpu()
             output = output.cpu()
 
-        total_loss += loss.data.numpy()[0]
+        total_loss += loss.data.numpy().item()
         
         if y is None:
             y = targets.data.numpy()
