@@ -33,7 +33,7 @@ for PROJECT in 'admission'; do
 #for PROJECT in 'tiramisu' 'oli' 'admission'; do
     #for METHOD in 'kr'; do
     for METHOD in 'arma' 'ar' 'kr' 'fnn' 'rnn' 'psrnn'; do
-        cmd="time python3.5 exp_multi_online_continuous.py $PROJECT
+        cmd="time python3.6 exp_multi_online_continuous.py $PROJECT
             --method $METHOD
             --aggregate $AGGREGATE
             --horizon $HORIZON"

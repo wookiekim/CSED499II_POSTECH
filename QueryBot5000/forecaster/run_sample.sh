@@ -26,7 +26,7 @@ for AGGREGATE in '60'; do
 for HORIZON in '4320'; do
 for PROJECT in 'tiramisu'; do
     for METHOD in 'ar' 'kr' 'rnn'; do
-        cmd="time python3.5 forecaster/exp_multi_online_continuous.py $PROJECT
+        cmd="time python3.6 forecaster/exp_multi_online_continuous.py $PROJECT
             --method $METHOD
             --aggregate $AGGREGATE
             --horizon $HORIZON

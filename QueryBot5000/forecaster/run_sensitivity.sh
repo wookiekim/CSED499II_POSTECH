@@ -25,7 +25,7 @@ for RHO in '0.55' '0.65' '0.75' '0.85' '0.95'; do
 for HORIZON in '60' '1440'; do
 for PROJECT in 'tiramisu' 'oli' 'admission'; do
     for METHOD in 'ar'; do
-        cmd="time python3.5 exp_multi_online_continuous.py $PROJECT --method $METHOD --aggregate 60
+        cmd="time python3.6 exp_multi_online_continuous.py $PROJECT --method $METHOD --aggregate 60
             --horizon $HORIZON
             --input_dir ~/peloton-tf/time-series-clustering/online-clusters-sensitivity/$PROJECT/$RHO/
             --cluster_path ~/peloton-tf/time-series-clustering/cluster-coverage-sensitivity/$PROJECT/$RHO/coverage.pickle

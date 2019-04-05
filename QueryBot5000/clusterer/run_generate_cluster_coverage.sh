@@ -22,7 +22,7 @@ fi
 
 for PROJECT in 'admission'; do
     for RHO in '0.1' '0.2' '0.3' '0.4'; do
-        cmd="time python3.5 generate-cluster-coverage.py
+        cmd="time python3.6 generate-cluster-coverage.py
                 --project $PROJECT
                 --assignment online-logical-clustering-results/$PROJECT-$RHO-assignments.pickle
                 --output_csv_dir online-clusters-logical/$PROJECT/$RHO/
