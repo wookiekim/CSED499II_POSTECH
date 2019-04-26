@@ -30,6 +30,7 @@ from spectral import Two_Stage_Regression
 from models import FNN_Model
 from models import RNN_Model
 from models import PSRNN_Model
+from models import TRANSFORMER_Model
 
 # ==============================================
 # PROJECT CONFIGURATIONS
@@ -44,37 +45,9 @@ PROJECTS = {
         #"../result-interval-new/online-prediction/online-tiramisu-clusters-prediction",
         "../result/online-prediction/online-tiramisu-clusters-prediction",
     },
-    "admission": {
-        "name": "admission",
-        #"input_dir": "../data/online-admission-clusters",
-        "input_dir":
-        "../../peloton-tf/time-series-clustering/online-admission-full-clusters/",
-        "cluster_path":
-        "../../peloton-tf/time-series-clustering/admission-full-coverage/coverage.pickle",
-        #"cluster_path": "../data/cluster-coverage/admission-coverage.pickle",
-        "output_dir":
-        #"../tmp/",
-        #"../result-admission-full/",
-        #"../result-interval/online-prediction/online-admission-clusters-prediction",
-        #"../result/online-prediction/online-admission-clusters-prediction",
-        "../result/online-prediction/online-admission-full-clusters-prediction",
-    },
-    "oli": {
-        "name": "oli",
-        "input_dir": "../data/online-oli-clusters",
-        "cluster_path": "../data/cluster-coverage/oli-coverage.pickle",
-        "output_dir":
-        "../result/online-prediction/online-oli-clusters-prediction",
-    },
-    "noise": {
-        "name": "noise",
-        "input_dir":
-        "../../peloton-tf/time-series-clustering/online-admission-noise-clusters/",
-        "cluster_path":
-        "../../peloton-tf/time-series-clustering/admission-noise-coverage/coverage.pickle",
-        "output_dir":
-        "../result-admission-noise/",
-    },
+    "to_be_added": {
+        
+    }
 }
 
 
@@ -92,7 +65,7 @@ class Args:
         self.lr = 1
         self.clip = 0.25
         # RNN learning epochs for each workload
-        self.epochs = {'tiramisu': 300, "oli": 30, "admission": 30, "noise": 50}
+        self.epochs = {'tiramisu': 300}
         # Adjust BPTT size accordingly with interval size
         self.bptt = {1: 240, 5:200, 10:120, 20:90, 30:60, 60:48, 120:30}
         self.dropout = 0.2
@@ -100,13 +73,7 @@ class Args:
         self.cuda = False
         self.log_interval = 50
         self.save = 'model.pt'
-        
-        # PSRNN params
-        self.kernel_width = 0.02
         self.nRFF = 25
-        self.matrix_batch_size = 5000
-        self.reg_rate = 0.001
-        self.max_lines = 10**3
 
         # added by Lin
         # Adjust batch size accordingly with interval size to save training time
@@ -306,72 +273,55 @@ def train_pass(args, method, model, data, criterion, lr, bptt, clip, log_interva
         return
 
     # Turn on training mode which enables dropout.
-    model.train()
+    if method == 'rnn':
+        model.train()
         
-    total_loss = 0
-    losses = []
+        total_loss = 0
+        losses = []
 
-    if method == 'fnn':
-        x, y = GeneratePair(data, args.horizon, args.regress_dim)
-
-        ndata = x.shape[0]
-        bptt = ndata // args.batch_size + 1
-        horizon = 0
-        nbatch = 0
-    else:
         batch_size = max(1, min(args.batch_size, len(data) // (args.horizon + args.bptt)))
         data = batchify(data, batch_size)
         ndata = data.shape[0]
         nbatch = data.shape[1]
         horizon = args.horizon
     
-    hidden = model.init_hidden(nbatch)
-    for batch, i in enumerate(range(0, ndata - horizon, bptt)):
-        if method == "fnn":
-            data_batch = x[i:i + bptt]
-            targets = y[i: i + bptt]
-            targets.reshape((1, targets.shape[0], -1))
-        else:
+        hidden = model.init_hidden(nbatch)
+        for batch, i in enumerate(range(0, ndata - horizon, bptt)):
             data_batch, targets = Utilities.get_batch(data, i, bptt, False, args.horizon)
 
-        input = Variable(torch.Tensor(data_batch.astype(float)))
-        targets = Variable(torch.Tensor(targets.astype(float)))
+            input = Variable(torch.Tensor(data_batch.astype(float)))
+            targets = Variable(torch.Tensor(targets.astype(float)))
 
-        if hidden is not None:
-            hidden = Utilities.repackage_hidden(hidden)
-        model.zero_grad()
+            if hidden is not None:
+                hidden = Utilities.repackage_hidden(hidden)
+            model.zero_grad()
 
-        if args.cuda:
-            input = input.cuda()
-            targets = targets.cuda()
-        output, hidden = model(input, hidden)
+            output, hidden = model(input, hidden)
         
-        # Calculations for loss
-        loss = criterion(output, targets)
-        if args.cuda:
-            loss = loss.cpu()
-        total_loss += loss.data.numpy().item()
-        losses.append(loss.data.numpy().item())
+            # Calculations for loss
+            loss = criterion(output, targets)
+            total_loss += loss.data.numpy().item()
+            losses.append(loss.data.numpy().item())
 
-        # Perform Gradient Descent
-        loss.backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), clip)
+            # Perform Gradient Descent
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), clip)
         
-        for p in model.parameters():
-            p.data.add_(-lr, p.grad.data)
+            for p in model.parameters():
+                p.data.add_(-lr, p.grad.data)
 
-        # Print Training Accuracy
-        if batch % log_interval == 0:
+            # Print Training Accuracy
+            if batch % log_interval == 0:
             
-            total_loss /= log_interval
+                total_loss /= log_interval
             
-            Utilities.prettyPrint(' lr: ' + str(lr) + ' batches: '
-                        + str(batch) + '/'+str(ndata // bptt),
-                        total_loss)       
+                Utilities.prettyPrint(' lr: ' + str(lr) + ' batches: '
+                            + str(batch) + '/'+str(ndata // bptt),
+                            total_loss)       
             
-            total_loss = 0
+                total_loss = 0
 
-    Utilities.prettyPrint('Average Train Loss: ', np.mean(losses))
+        Utilities.prettyPrint('Average Train Loss: ', np.mean(losses))
 
 
 def evaluate_pass(args, method, model, data, criterion, bptt):
@@ -425,19 +375,11 @@ def evaluate_pass(args, method, model, data, criterion, bptt):
 
         return np.mean((y - y_hat) ** 2), y, y_hat
 
-
-    model.eval()
+    if method == 'rnn':
+        model.eval()
         
-    total_loss = 0
+        total_loss = 0
 
-    if method == 'fnn':
-        x_data, y_data = GeneratePair(data, args.horizon, args.regress_dim)
-
-        ndata = x_data.shape[0]
-        bptt = ndata
-        horizon = 0
-        nbatch = 0
-    else:
         # Because the prediction must be continuous, we cannot use batch here
         data = batchify(data, 1)
         #data = batchify(data, args.batch_size)
@@ -445,55 +387,41 @@ def evaluate_pass(args, method, model, data, criterion, bptt):
         nbatch = data.shape[1]
         horizon = args.horizon
 
-    hidden = model.init_hidden(nbatch)
-    y = None
-    y_hat = None
-    batch = 0
+        hidden = model.init_hidden(nbatch)
+        y = None
+        y_hat = None
+        batch = 0
 
-    for batch, i in enumerate(range(0, ndata - args.horizon, bptt)):
-        if method == "fnn":
-            data_batch = x_data[i:i + bptt]
-            targets = y_data[i: i + bptt]
-            targets = targets.reshape((1, targets.shape[0], -1))
-        else:
+        for batch, i in enumerate(range(0, ndata - args.horizon, bptt)):
             data_batch, targets = Utilities.get_batch(data, i, bptt, False, args.horizon)
 
-        input = Variable(torch.Tensor(data_batch.astype(float)))
-        targets = Variable(torch.Tensor(targets.astype(float)))
+            input = Variable(torch.Tensor(data_batch.astype(float)))
+            targets = Variable(torch.Tensor(targets.astype(float)))
 
-        if args.cuda:
-            input = input.cuda()
-            targets = targets.cuda()
-
-        if hidden is not None:
-            hidden = Utilities.repackage_hidden(hidden)
-        output, hidden = model(input, hidden)
+            if hidden is not None:
+                hidden = Utilities.repackage_hidden(hidden)
+            output, hidden = model(input, hidden)
         
-        # Calculations for loss
-        loss = criterion(output, targets)
+            # Calculations for loss
+            loss = criterion(output, targets)
     
-        if args.cuda:
-            loss = loss.cpu()
-            targets = targets.cpu()
-            output = output.cpu()
-
-        total_loss += loss.data.numpy().item()
+            total_loss += loss.data.numpy().item()
         
-        if y is None:
-            y = targets.data.numpy()
-        else:
-            y = np.concatenate((y, targets.data.numpy()))
+            if y is None:
+                y = targets.data.numpy()
+            else:
+                y = np.concatenate((y, targets.data.numpy()))
 
-        if y_hat is None:
-            y_hat = output.data.numpy()
-        else:
-            y_hat = np.concatenate((y_hat, output.data.numpy()))
+            if y_hat is None:
+                y_hat = output.data.numpy()
+            else:
+                y_hat = np.concatenate((y_hat, output.data.numpy()))
 
-    # transpose the output back to normal order
-    y = y.transpose(1, 0, 2).reshape((-1, y.shape[2]))
-    y_hat = y_hat.transpose(1, 0, 2).reshape((-1, y_hat.shape[2]))
+        # transpose the output back to normal order
+        y = y.transpose(1, 0, 2).reshape((-1, y.shape[2]))
+        y_hat = y_hat.transpose(1, 0, 2).reshape((-1, y_hat.shape[2]))
 
-    return (total_loss / (batch+1)), y, y_hat
+        return (total_loss / (batch+1)), y, y_hat
 
 
 def GetModel(args, data, method):
@@ -503,55 +431,15 @@ def GetModel(args, data, method):
     bsz = train.shape[1]
 
     #%% BUILD THE MODEL
-    if method == "fnn":
-        model = FNN_Model.FNN_Model(args.model, ntokens, args.regress_dim, args.nRFF, args.nhid,
-                args.nlayers, args.dropout, args.tied)
 
     if method == "rnn":
         model = RNN_Model.RNN_Model(args.model, ntokens, args.nRFF, args.nhid, args.nlayers, args.dropout, args.tied)
-
-    if method == "psrnn":
-        model = PSRNN_Model.PSRNN_Model(args.model, ntokens, args.nRFF, args.nhid, args.nlayers,
-                args.dropout, args.tied, args.cuda)
-
-        # %% TWO STAGE REGRESSION
-        data_len = 2 * PSRHORIZON + 1
-        stacked_data = np.empty((ntokens * data_len,0))
-        for i in range(bsz):
-            data_list = []
-            train_len = len(train)
-            for j in range(data_len):
-                data_list.append(train[j:train_len - data_len + j + 1, i, :])
-            batch = np.hstack(tuple(data_list))
-            stacked_data = np.concatenate([stacked_data, batch.T],1)
-
-        rbf_sampler, U_obs, W_FE_F_weight, W_FE_F_bias, W_pred_weight, W_pred_bias, x_1 = \
-        Two_Stage_Regression.two_stage_regression(stacked_data, obsFun, pastFun, futureFun, shiftedFutureFun, outputFun, args)
-
-        # Initialize with PSR
-        model.init_weights_psr(rbf_sampler.random_weights_.T,
-                               rbf_sampler.random_offset_, 
-                               U_obs,
-                               W_FE_F_weight,
-                               W_FE_F_bias, 
-                               W_pred_weight,
-                               W_pred_bias,
-                               x_1)
 
     if method == "ar" or method == 'arma':
         return LinearModel()
 
     if method == "kr":
         return KernelRegressionModel()
-
-
-    #model = RNN_RBF_Model(args.model, ntokens, args.nRFF, args.nhid, args.nlayers, args.dropout, args.tied)
-    #model = PSRNN_Nonlinear_Model_backup.PSRNN_Nonlinear_Model_backup(args.model, ntokens, args.nRFF, args.nhid, args.nlayers, args.dropout, args.tied)
-    #model = PSRNN_Factorized_Model.PSRNN_Factorized_Model(args.model, ntokens, args.nRFF, \
-    #                                                      args.nhid, args.nlayers, args.dropout, args.nhid*30)
-
-    if args.cuda:
-        model.cuda()
 
     return model
 
@@ -599,12 +487,7 @@ def Predict(args, config, top_cluster, trajs, method):
     for date, cluster_list in top_cluster[args.start_pos // args.interval:- max(args.horizon //
             args.interval, 1)]:
         # Training delta
-        if config['name'] == "admission":
-            first_date = datetime(2016, 9, 18)
-        elif config['name'] == "noise":
-            first_date = datetime(2018, 1, 28, 0, 58)
-        else:
-            first_date = top_cluster[0][0]
+        first_date = top_cluster[0][0]
         train_delta_intervals = min(((date - first_date).days * 1440 + (date - first_date).seconds // 60
             ) // (args.aggregate * args.interval), args.training_intervals)
         #print(train_delta_intervals)
@@ -663,9 +546,6 @@ def Predict(args, config, top_cluster, trajs, method):
         for i, c in enumerate(clusters):
             WriteResult(config['output_dir'] + str(c) + ".csv", predict_dates, y[:, i], y_hat[:, i])
 
-        #WriteResult(config['output_dir'] + "total.csv", predict_dates, np.sum(y, axis = 1),
-        #        np.sum(y_hat, axis = 1))
-
 
 def WriteResult(path, dates, actual, predict):
     with open(path, "a") as csvfile:
@@ -679,23 +559,6 @@ def Main(config, method, aggregate, horizon, input_dir, output_dir, cluster_path
 
     if method == 'ar' or method == "arma" or method == "kr":
         args.epochs = 1
-
-    if config['name'] == "admission":
-        args.start_pos = 1440 * 50
-        if method == 'kr':
-            args.training_intervals = 10000
-            args.regress_dim[aggregate] = 480
-        args.paddling_intervals = 30
-        if method == 'rnn':
-            args.epochs = 200
-        
-    if config['name'] == "noise":
-        args.interval = 60
-        args.start_pos = 120
-        args.training_intervals = 3
-        args.paddling_intervals = 1
-        args.regress_dim[aggregate] = 5
-
 
     global NTOKENS
     NTOKENS = args.top_cluster_num
@@ -725,8 +588,6 @@ def Main(config, method, aggregate, horizon, input_dir, output_dir, cluster_path
     method_name = method
     if method == "rnn":
         method_name = "noencoder-rnn"
-    if method == "psrnn":
-        method_name = "psrnn-h5"
 
     output_dir += "/agg-%s/horizon-%s/%s/" % (aggregate, horizon, method_name)
 
