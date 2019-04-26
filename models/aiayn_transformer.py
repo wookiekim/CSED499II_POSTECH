@@ -1,4 +1,9 @@
-# Referenced http://nlp.seas.harvard.edu/2018/04/03/attention.html
+# Referenced _http://nlp.seas.harvard.edu/2018/04/03/attention.html_
+#            Which is also _https://github.com/harvardnlp/annotated-transformer_
+# Referenced _https://medium.com/inside-machine-learning/what-is-a-transformer-d07dd1fbec04_ for adapting to time-series forecasting
+# RNN in QB5000 was adapted to time-series forecastig from:
+#   _https://github.com/pytorch/examples/blob/master/word_language_model/model.py_
+
 
 import math
 import copy
@@ -47,6 +52,7 @@ class Generator(nn.Module):
     '''
     Define standard linear + softmax generation step.
     '''
+    # Try 1: remove softmax from output
 
     def __init__(self, d_model, vocab):
         super(Generator, self).__init__()
@@ -259,8 +265,7 @@ class PositionalEncoding(nn.Module):
 ###########################FULL MODEL###########################################
 ################################################################################
 
-def make_model(src_vocab, tgt_vocab, N=6, 
-               d_model=512, d_ff=2048, h=8, dropout=0.1):
+def make_model(src_vocab, tgt_vocab, N=6, d_model=512, d_ff=2048, h=8, dropout=0.1):
     "Helper: Construct a model from hyperparameters."
     c = copy.deepcopy
     attn = MultiHeadedAttention(h, d_model)
