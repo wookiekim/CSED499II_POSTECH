@@ -16,5 +16,5 @@
 ./forecaster/run_sample.sh
 
 # Generate ENSEMBLE and HYBRID results
-./forecaster/generate_ensemble_hybrid.py prediction-results/agg-60/horizon-4320/ar/ prediction-results/agg-60/horizon-4320/noencoder-rnn/ prediction-results/agg-60/horizon-4320/ensemble False
-./forecaster/generate_ensemble_hybrid.py  prediction-results/agg-60/horizon-4320/ensemble prediction-results/agg-60/horizon-4320/kr prediction-results/agg-60/horizon-4320/hybrid True
+#./forecaster/generate_ensemble_hybrid.py prediction-results/agg-60/horizon-4320/ar/ prediction-results/agg-60/horizon-4320/noencoder-rnn/ prediction-results/agg-60/horizon-4320/ensemble False
+#./forecaster/generate_ensemble_hybrid.py  prediction-results/agg-60/horizon-4320/ensemble prediction-results/agg-60/horizon-4320/kr prediction-results/agg-60/horizon-4320/hybrid True
