@@ -27,9 +27,7 @@ import Utilities
 
 from spectral import Two_Stage_Regression
 
-from models import FNN_Model
 from models import RNN_Model
-from models import PSRNN_Model
 from models import TRANSFORMER_Model
 
 # ==============================================
