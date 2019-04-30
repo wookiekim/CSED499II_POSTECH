@@ -130,7 +130,7 @@ def batchify(data, bsz):
     # Transpose the data to fit the model input
     data = data.transpose(1,0,2)
     
-    # data.shape = (sequense length, batch size, dim of the observation)
+    # data.shape = (sequence length, batch size, dim of the observation)
     return data
 
 
@@ -168,21 +168,6 @@ def LoadData(file_path, aggregate):
 
 
 NTOKENS = 3
-PSRHORIZON = 5
-def obsFun(x): 
-    return x[NTOKENS * PSRHORIZON:NTOKENS * (PSRHORIZON + 1),:]
-
-def pastFun(x): 
-    return x[:NTOKENS * PSRHORIZON,:]
-    
-def futureFun(x): 
-    return x[NTOKENS * PSRHORIZON :NTOKENS * PSRHORIZON * 2,:]
-
-def shiftedFutureFun(x): 
-    return x[NTOKENS * (PSRHORIZON + 1):NTOKENS * (PSRHORIZON * 2 + 1),:]
-
-def outputFun(x): 
-    return x[NTOKENS * PSRHORIZON:NTOKENS * (PSRHORIZON + 1),:]
 
 def GeneratePair(data, horizon, input_dim):
     n = data.shape[0]
