@@ -14,6 +14,7 @@
 
 # Run forecasting models
 ./forecaster/run_sample.sh
+#./forecaster/run_transformer.sh
 
 # Generate ENSEMBLE and HYBRID results
 #./forecaster/generate_ensemble_hybrid.py prediction-results/agg-60/horizon-4320/ar/ prediction-results/agg-60/horizon-4320/noencoder-rnn/ prediction-results/agg-60/horizon-4320/ensemble False

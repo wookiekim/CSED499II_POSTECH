@@ -161,7 +161,6 @@ def LoadData(file_path, aggregate):
                     trajs[cluster][time_stamp] = 0
 
                 trajs[cluster][time_stamp] += count
-
     return trajs
 
 
@@ -423,7 +422,7 @@ def GetModel(args, data, method):
 
     if method == "kr":
         return KernelRegressionModel()
-
+    
     return model
 
 def GetMultiData(trajs, clusters, date, num_days, interval, num_mins, aggregate):
@@ -449,7 +448,6 @@ def GetMultiData(trajs, clusters, date, num_days, interval, num_mins, aggregate)
             obs.append(data_point)
 
         traj.append(obs)
-
     traj = np.array(traj)
 
     return traj
@@ -466,37 +464,30 @@ def Normalize(data):
     return data, data_min, data_mean, data_std
 
 def Predict(args, config, top_cluster, trajs, method):
-
     for date, cluster_list in top_cluster[args.start_pos // args.interval:- max(args.horizon //
             args.interval, 1)]:
         # Training delta
         first_date = top_cluster[0][0]
         train_delta_intervals = min(((date - first_date).days * 1440 + (date - first_date).seconds // 60
             ) // (args.aggregate * args.interval), args.training_intervals)
-        #print(train_delta_intervals)
-        #print(date, first_date)
         # Predict delta
         predict_delta_mins = args.horizon * args.aggregate
-
-        print(date, first_date, date + timedelta(minutes = predict_delta_mins))
-
+        
         clusters = next(zip(*cluster_list))[:args.top_cluster_num]
 
         data = GetMultiData(trajs, clusters, date, train_delta_intervals, args.interval, predict_delta_mins, args.aggregate)
-
 
         data, data_min, data_mean, data_std = Normalize(data)
 
         #print(data)
         print(data.shape)
         #print(args.interval, args.horizon)
-        train_data = data[:-args.interval - args.horizon]
+        train_data = data[:-args.interval - args.horizon] # interval == 36 , horizon == 60
         print(train_data.shape)
         test_data = data[-(args.paddling_intervals * args.interval + args.horizon + args.interval):]
         print(test_data.shape)
-
         model = GetModel(args, train_data, method)
-
+        
         criterion = nn.MSELoss()
 
         # Loop over epochs.

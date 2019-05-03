@@ -1,9 +1,3 @@
-#########################################################################
-# File Name: run.sh
-# Author: Lin Ma
-# mail: malin1993ml@gmail.com
-# Created Time: 07/09/17
-#########################################################################
 #!/bin/bash
 
 trap onexit 1 2 3 15
@@ -25,11 +19,9 @@ fi
 for AGGREGATE in '60'; do
 for HORIZON in '4320'; do
 for PROJECT in 'tiramisu'; do
-    for METHOD in 'rnn'; do
-        cmd="time python3.6 forecaster/exp_multi_online_continuous.py $PROJECT
+    for METHOD in 'transformer'; do
+        cmd="time python3.6 forecaster/forecast_transformer.py $PROJECT
             --method $METHOD
-            --aggregate $AGGREGATE
-            --horizon $HORIZON
             --input_dir online-clusters/
             --cluster_path cluster-coverage/coverage.pickle
             --output_dir prediction-results/"
