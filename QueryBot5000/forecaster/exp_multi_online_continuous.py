@@ -297,13 +297,13 @@ def train_pass(args, method, model, data, criterion, lr, bptt, clip, log_interva
             
                 total_loss /= log_interval
             
-                Utilities.prettyPrint(' lr: ' + str(lr) + ' batches: '
-                            + str(batch) + '/'+str(ndata // bptt),
-                            total_loss)       
+                #Utilities.prettyPrint(' lr: ' + str(lr) + ' batches: '
+                #            + str(batch) + '/'+str(ndata // bptt),
+                #            total_loss)       
             
                 total_loss = 0
 
-        Utilities.prettyPrint('Average Train Loss: ', np.mean(losses))
+        #Utilities.prettyPrint('Average Train Loss: ', np.mean(losses))
 
 
 def evaluate_pass(args, method, model, data, criterion, bptt):
@@ -428,7 +428,8 @@ def GetModel(args, data, method):
 def GetMultiData(trajs, clusters, date, num_days, interval, num_mins, aggregate):
     date_list = [date - timedelta(minutes = x) for x in range(num_days * interval * aggregate,
         -num_mins, -aggregate)]
-
+    print(num_days, interval, aggregate, num_mins, aggregate)
+    raise
     traj = []
 
     for date in date_list:
@@ -480,12 +481,12 @@ def Predict(args, config, top_cluster, trajs, method):
         data, data_min, data_mean, data_std = Normalize(data)
 
         #print(data)
-        print(data.shape)
+        #print(data.shape)
         #print(args.interval, args.horizon)
         train_data = data[:-args.interval - args.horizon] # interval == 36 , horizon == 60
-        print(train_data.shape)
+        #print(train_data.shape)
         test_data = data[-(args.paddling_intervals * args.interval + args.horizon + args.interval):]
-        print(test_data.shape)
+        #print(test_data.shape)
         model = GetModel(args, train_data, method)
         
         criterion = nn.MSELoss()
@@ -498,19 +499,19 @@ def Predict(args, config, top_cluster, trajs, method):
             if epoch > 100:
                 lr = 0.2
             train_pass(args, method, model, train_data, criterion, lr, args.bptt, args.clip, args.log_interval)
-            print('about to evaluate: ')
+            #print('about to evaluate: ')
             val_loss, y, y_hat, = evaluate_pass(args, method, model, test_data, criterion, args.bptt)
-            Utilities.prettyPrint('Validation Loss: Epoch'+str(epoch), np.mean((y[-args.interval:] -
-                y_hat[-args.interval:]) ** 2))
+            #Utilities.prettyPrint('Validation Loss: Epoch'+str(epoch), np.mean((y[-args.interval:] -
+            #    y_hat[-args.interval:]) ** 2))
 
         # Run on test data.
-        print('about to test')
+        #print('about to test')
         test_loss, y, y_hat= evaluate_pass(args, method, model, test_data, criterion, args.bptt)
 
         y = y[-args.interval:]
         y_hat = y_hat[-args.interval:]
-        Utilities.prettyPrint('Test Loss', np.mean((y - y_hat) ** 2))
-        Utilities.prettyPrint('Test Data Variance', np.mean(y ** 2))
+        #Utilities.prettyPrint('Test Loss', np.mean((y - y_hat) ** 2))
+        #Utilities.prettyPrint('Test Data Variance', np.mean(y ** 2))
 
         y = np.exp(y * data_std + data_mean) - data_min
         y_hat = np.exp(y_hat * data_std + data_mean) - data_min
@@ -518,7 +519,13 @@ def Predict(args, config, top_cluster, trajs, method):
         predict_dates = [date + timedelta(minutes = args.horizon * args.aggregate - x) for x in
                 range(args.interval * args.aggregate, 0, -args.aggregate)]
         for i, c in enumerate(clusters):
+            #print(i,c)
             WriteResult(config['output_dir'] + str(c) + ".csv", predict_dates, y[:, i], y_hat[:, i])
+            #print("##################",i,c,"##################")
+            #print(y)
+            #print("##################",i,c,"##################")
+            #print(y[:,i])
+
 
 
 def WriteResult(path, dates, actual, predict):
