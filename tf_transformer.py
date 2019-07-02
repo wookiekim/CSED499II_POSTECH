@@ -7,16 +7,23 @@ from datetime import datetime
 from datetime import timedelta
 import math
 
+# The metric to be used in evaluating the accuracy of predicted time series workload data
 def log_mse(y, y_pred):
         assert len(y) == len(y_pred)
         terms = [(y_pred[i] - y[i]) ** 2.0 for i, pred in enumerate(y_pred)]
         return math.log((sum(terms)/len(y))**0.5)
 
+# Read cluster file. The file name (1.csv at the moment) should be changed for different clusters.
+# This is repeated 2 more times, since the forecaster forecasts for MULTIPLE clusters with the highest
+#       workload volume.
 df = pd.read_csv('./QueryBot5000/online-clusters/1.csv', header=None)
+
+# Aggregate the cluster data to hourly data.
 times = pd.to_datetime(df[0])
 grouped = df.groupby([times.dt.date, times.dt.hour])[1].sum()
 framed = grouped.reset_index(level=[1])
 framed['date'] = framed.index
+# Maintain the date format to be equal to the original output from given code.
 framed = framed.reset_index(drop=True)
 framed[0] = pd.to_timedelta(framed[0], unit='h')
 framed['date']=pd.to_datetime(framed['date'])
@@ -24,6 +31,7 @@ framed[0] = framed['date']+framed[0]
 framed = framed.drop(columns='date')
 df1 = framed
 
+# Read cluster file. The file name (1.csv at the moment) should be changed for different clusters.
 df = pd.read_csv('./QueryBot5000/online-clusters/43.csv', header=None)
 times = pd.to_datetime(df[0])
 grouped = df.groupby([times.dt.date, times.dt.hour])[1].sum()
@@ -36,6 +44,7 @@ framed[0] = framed['date']+framed[0]
 framed = framed.drop(columns='date')
 df2 = framed
 
+# Read cluster file. The file name (1.csv at the moment) should be changed for different clusters.
 df = pd.read_csv('./QueryBot5000/online-clusters/6.csv', header=None)
 times = pd.to_datetime(df[0])
 grouped = df.groupby([times.dt.date, times.dt.hour])[1].sum()
@@ -48,19 +57,22 @@ framed[0] = framed['date']+framed[0]
 framed = framed.drop(columns='date')
 df3 = framed
 
+# Append the three data frames from different clusters
+# So that they can be trained and predicted together.
 df1.merge(df2, 'outer', on=0).fillna(0)
-
 df = df1.merge(df2, 'outer', on=0).fillna(0).merge(df3,'outer', on=0).fillna(0)
-
 date_ori = pd.to_datetime(df.iloc[:, 0])
-
 original = df.iloc[:,1:].astype('float').values
 
+# Use MinMax Scaler 
 minmax = MinMaxScaler().fit(df.iloc[:, 1:].astype('float'))
 df_log = minmax.transform(df.iloc[:, 1:].astype('float'))
 df_log = pd.DataFrame(df_log)
 ###################################
 # Define Model                    #
+# Code for the transformer model  #
+# Everything should be straightforward, but in case of confusion #
+# "The Annotated Transformer" http://nlp.seas.harvard.edu/2018/04/03/attention.html could be helpful #
 ###################################
 def layer_norm(inputs, epsilon=1e-8):
     mean, variance = tf.nn.moments(inputs, [-1], keep_dims=True)
@@ -70,6 +82,7 @@ def layer_norm(inputs, epsilon=1e-8):
     beta = tf.get_variable('beta', params_shape, tf.float32, tf.zeros_initializer())
     outputs = gamma * normalized + beta
     return outputs
+
 
 def multihead_attn(queries, keys, q_masks, k_masks, future_binding, num_units, num_heads):
     T_q = tf.shape(queries)[1]                                      
@@ -165,6 +178,7 @@ class Attention:
         )
 ##################
 # Hyperparameters#
+# EDIT THE VALUES BELOW for hyperparameter tuning#
 ##################
 timestamp = 264
 epoch = 300
@@ -179,9 +193,6 @@ modelnn = Attention(embedded_size, embedded_size, learning_rate, df_log.shape[1]
 sess = tf.InteractiveSession()
 sess.run(tf.global_variables_initializer())
 
-#########################
-# Needs to be changed   #
-#########################
 #Train for [epoch] epochs
 for i in range(epoch): 
     total_loss = 0
@@ -203,6 +214,7 @@ for i in range(epoch):
     if (i + 1) % 100 == 0:
         print('epoch:', i + 1, 'avg loss:', total_loss)
 
+# Carry out prediction
 output_predict = np.zeros((df_log.shape[0] + 1, df_log.shape[1]))
 output_predict[0, :] = df_log.iloc[0, :]
 upper_b = (df_log.shape[0] // timestamp) * timestamp
@@ -216,20 +228,27 @@ for k in range(0, (df_log.shape[0] // timestamp) * timestamp, timestamp):
     )
     output_predict[k + 1: k + timestamp + 1, :] = out_logits
 
+# run session to obtain the output prediction values
+# The results have to be inversely transformed to negate the MinMax Scaler (done later)
 out_logits = sess.run(modelnn.logits, 
     feed_dict = {modelnn.X: np.expand_dims(df_log.iloc[upper_b:, :], axis = 0)},
 )
 output_predict[upper_b + 1 : df_log.shape[0] + 1, :] = out_logits
 
+# Alter all negative values to 0, considering that there cannot be a negative workload.
 output_predict[output_predict < 0] = 0
 output_predict = output_predict[:-1]
+# inverse transform to get the actual predicted values.
 df_log = minmax.inverse_transform(output_predict)
 
+# format the values to be easily readable
+# output as csv file (further processed in Microsoft Excel)
 concatenated = np.concatenate((original, df_log), axis=1)
 results = pd.DataFrame(concatenated)
 results['date'] = date_ori
 results.to_csv("results.csv",",",index=False)
 
+# transpose to calculate Log MSE values
 original = original.transpose()
 df_log = df_log.transpose()
 
